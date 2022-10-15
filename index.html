@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,maximum-scale=2">
+    <link rel="stylesheet" type="text/css" media="screen" href="/scraper/assets/css/style.css?v=92fd8f214c03d8ea3bf39ae4ba4522b683ad76d2">
+
+<!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>scraper | A web scraping app that runs on Azure Container Apps</title>
+<meta name="generator" content="Jekyll v3.9.0" />
+<meta property="og:title" content="scraper" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="A web scraping app that runs on Azure Container Apps" />
+<meta property="og:description" content="A web scraping app that runs on Azure Container Apps" />
+<meta property="og:site_name" content="scraper" />
+<script type="application/ld+json">
+{"@type":"WebSite","headline":"scraper","url":"/scraper/","description":"A web scraping app that runs on Azure Container Apps","name":"scraper","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/devlooped/scraper">View on GitHub</a>
+
+          <h1 id="project_title">scraper</h1>
+          <h2 id="project_tagline">A web scraping app that runs on Azure Container Apps</h2>
+
+          
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1 id="scraper">scraper</h1>
+
+<p>A general purpose web scraper API built on Azure Container Apps</p>
+
+<h2 id="how-to-clone-and-deploy">How to clone and deploy</h2>
+
+<p>Instructions use the <a href="https://docs.microsoft.com/en-us/cli/azure/">Azure CLI</a> exclusively,
+since that gives you the most control over the entire deployment.</p>
+
+<ol>
+  <li><strong>Resource Group</strong>: make sure you are using the right account/subscription from the CLI.
+    <ol>
+      <li>Show currently selected account:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az account show
+</code></pre></div>        </div>
+      </li>
+      <li>If you want to change the subscription:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az account set --subscription &lt;subscription-id&gt;
+</code></pre></div>        </div>
+        <p>To lookup the subscription id:</p>
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az account list --output table
+</code></pre></div>        </div>
+      </li>
+      <li>Create resource group:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az group create --name scraper --location &lt;location&gt;
+</code></pre></div>        </div>
+        <p>To list available locations:</p>
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az account list-locations --output table
+</code></pre></div>        </div>
+      </li>
+      <li>Ensure CLI extensions install automatically:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az config set extension.use_dynamic_install=yes_without_prompt
+</code></pre></div>        </div>
+      </li>
+    </ol>
+  </li>
+  <li><strong>Log Analytics</strong>: setup a new log analytics workspace for logs from the app.
+    <ol>
+      <li>Create it:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az monitor log-analytics workspace create -g scraper -n scraper
+</code></pre></div>        </div>
+        <p>Copy the <code class="language-plaintext highlighter-rouge">customerId</code> value from the returned payload.</p>
+      </li>
+      <li>Get shared key:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az monitor log-analytics workspace get-shared-keys -g scraper -n scraper
+</code></pre></div>        </div>
+      </li>
+    </ol>
+  </li>
+  <li><strong>Container App Environment</strong>: create and configure the app environment with the logs workspace created above.
+    <ol>
+      <li>List available locations for container app environments:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az provider show -n Microsoft.App --query "resourceTypes[?resourceType=='managedEnvironments'].locations"
+</code></pre></div>        </div>
+      </li>
+      <li>Create with:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az containerapp env create -g scraper -n scraper --logs-workspace-id [customerId] --logs-workspace-key [sharedKey] --location &lt;location&gt;
+</code></pre></div>        </div>
+      </li>
+    </ol>
+  </li>
+  <li><strong>Container Registry</strong>: deployments to an app come from images in a container registry, which 
+is populated automatically from CI.
+    <ol>
+      <li>Create with:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az acr create -g scraper -n scraper --sku Basic --location &lt;location&gt;
+</code></pre></div>        </div>
+        <p>It’s probably a good idea to use the same location as the app environment.
+Note the <code class="language-plaintext highlighter-rouge">loginServer</code> value in the returned payload.</p>
+      </li>
+      <li>Login to it with:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az acr login -n scraper
+</code></pre></div>        </div>
+      </li>
+      <li>Enable admin mode (so we can get the passwords) with:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az acr update -n scraper --admin-enabled true
+</code></pre></div>        </div>
+      </li>
+      <li>Retrieve the username/password for the registry with:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az acr credential show -n scraper
+</code></pre></div>        </div>
+      </li>
+    </ol>
+  </li>
+  <li><strong>Container App</strong>: finally!
+    <ol>
+      <li>Create with:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az containerapp create -g scraper -n scraper --environment scraper
+</code></pre></div>        </div>
+      </li>
+      <li>Enable HTTP ingress with:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az containerapp ingress enable -g scraper -n scraper --type external --allow-insecure --target-port 80
+</code></pre></div>        </div>
+        <p>Note: we don’t really need HTTPS since Azure will automatically provide a proper HTTPS endpoint.</p>
+      </li>
+      <li>Set the container registry to use:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az containerapp registry set -g scraper -n scraper --server &lt;loginServer&gt; --username scraper --password &lt;password&gt;
+</code></pre></div>        </div>
+        <p>Note the <code class="language-plaintext highlighter-rouge">--server</code> argument is the <code class="language-plaintext highlighter-rouge">loginServer</code> from the previous section.</p>
+      </li>
+    </ol>
+  </li>
+  <li><strong>GitHub</strong>: on to the setup on the repo side.
+    <ol>
+      <li>Clone the repo</li>
+      <li>Create an Actions repository secret named <code class="language-plaintext highlighter-rouge">AZURE_CONTAINER_PWD</code> with the container registry password from step <code class="language-plaintext highlighter-rouge">4.4</code>.</li>
+      <li>Create credentials to update the resource group from CI:
+        <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>az ad sp create-for-rbac --name scraper --role contributor --scopes "/subscriptions/&lt;subscription&gt;/resourceGroups/scraper" --sdk-auth
+</code></pre></div>        </div>
+        <p>Copy the entire response payload.</p>
+      </li>
+      <li>Create an Actions repository secret named <code class="language-plaintext highlighter-rouge">AZURE_CREDENTIALS</code> with the copied value.</li>
+      <li>If you changed resource names, update the <a href=".github/workflows/build.yml">build.yml</a> file accordingly.</li>
+    </ol>
+  </li>
+</ol>
+
+<p>Now you can run the <code class="language-plaintext highlighter-rouge">build</code> workflow and see it live!</p>
+
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        
+        <p class="copyright">scraper maintained by <a href="https://github.com/devlooped">devlooped</a></p>
+        
+        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+  </body>
+</html>
